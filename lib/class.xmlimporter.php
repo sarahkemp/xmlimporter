@@ -18,6 +18,7 @@
 
 	class XMLImporter {
 		const __OK__ = 100;
+		const __PARTIAL_OK__ = 110;
 		const __ERROR_PREPARING__ = 200;
 		const __ERROR_VALIDATING__ = 210;
 		const __ERROR_CREATING__ = 220;
@@ -220,8 +221,8 @@
 				$entry = EntryManager::create();
 				$entry->set('section_id', $options['section']);
 				$entry->set('author_id', is_null(Symphony::Engine()->Author) ? '1' : Symphony::Engine()->Author->get('id'));
-				$entry->set('creation_date', DateTimeObj::get('Y-m-d H:i:s'));
-				$entry->set('creation_date_gmt', DateTimeObj::getGMT('Y-m-d H:i:s'));
+				$entry->set('modification_date_gmt', DateTimeObj::getGMT('Y-m-d H:i:s'));
+				$entry->set('modification_date', DateTimeObj::get('Y-m-d H:i:s'));
 
 				$values = array();
 
@@ -289,18 +290,30 @@
 			return self::__OK__;
 		}
 
-		public function commit() {
+		public function commit($status) {
 			$options = $this->options();
 			$existing = array();
-			$modificationDate = DateTimeObj::get('Y-m-d H:i:s');
-			$modificationDateGmt = DateTimeObj::getGMT('Y-m-d H:i:s');
-
 			$section = SectionManager::fetch($options['section']);
 
+			// if $status = PARTIAL_OK
+			if($status == self::__PARTIAL_OK__) {
+				$entries = $this->_entries;
+				foreach($entries as $index => $current) {
+					if(!empty($current['errors'])) {
+						$this->_entries[$index]['entry']->set('importer_status', 'failed');
+						unset($entries[$index]);
+					}
+				}
+			}
+			else {
+				$entries = $this->_entries;
+			}
+
+			// Check uniqueness
 			if ((integer)$options['unique-field'] > 0) {
 				$field = FieldManager::fetch($options['unique-field']);
 
-				if (!empty($field)) foreach ($this->_entries as $index => $current) {
+				if (!empty($field)) foreach ($entries as $index => $current) {
 					$entry = $current['entry'];
 
 					$data = $entry->getData($options['unique-field']);
@@ -321,7 +334,7 @@
 				}
 			}
 
-			foreach ($this->_entries as $index => $current) {
+			foreach ($entries as $index => $current) {
 				$entry = $current['entry'];
 				$values = $current['values'];
 
@@ -333,8 +346,6 @@
 					if ($options['can-update'] == 'yes') {
 						$entry->set('id', $existing[$index]);
 						$entry->set('importer_status', 'updated');
-						$entry->set('modification_date', $modificationDate);
-						$entry->set('modification_date_gmt', $modificationDateGmt);
 					}
 
 					// Skip
@@ -360,6 +371,9 @@
 
 				// Create a new entry
 				else {
+					$entry->set('creation_date_gmt', DateTimeObj::getGMT('Y-m-d H:i:s'));
+					$entry->set('creation_date', DateTimeObj::get('Y-m-d H:i:s'));
+
 					###
 					# Delegate: XMLImporterEntryPreCreate
 					# Description: Just prior to creation of an Entry. Entry object provided
@@ -377,7 +391,9 @@
 
 				$status = $entry->get('importer_status');
 
-				if (!$status) $entry->set('importer_status', 'created');
+				if (!$status) {
+					$this->_entries[$index]['entry']->set('importer_status', 'created');
+				}
 
 				if ($edit) {
 					###
