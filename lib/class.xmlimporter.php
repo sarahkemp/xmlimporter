@@ -192,10 +192,25 @@
 						$php = stripslashes($mapping['php']);
 
 						// static helper
-						if (preg_match('/::/', $php)) {
-							foreach($values as $id => $value) {
-								$values[$id] = call_user_func_array($php, array($value));
-							}
+                                                if (preg_match('/::/', $php)) {
+                                                        $args = array();
+                                                        if(preg_match('/\(/', $php)){ //get arguments if given
+                                                                $str = strpos($php,'(')+1;
+                                                                $len = strrpos($php,')') - $str;
+                                                                $args[0] = ''; //save a place for the value
+                                                                $args[1] = substr($php,$str,$len);
+                                                                $php = explode('(',$php, 2);
+                                                                $php = $php[0]; //remove arguments from function name
+                                                        }
+                                                        if(preg_match('/::multi/', $php)){
+                                                                $args[0] = $values;
+                                                                $values = call_user_func_array($php, $args);
+                                                        }else{
+                                                                foreach($values as $id => $value) {
+                                                                        $args[0] = $value; //assign the nex value on each interation
+                                                                        $values[$id] = call_user_func_array($php, $args);
+                                                                }
+                                                        }
 						}
 
 						// basic function
