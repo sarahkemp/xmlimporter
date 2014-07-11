@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<extension id="xmlimporter" status="released" xmlns="http://symphony-cms.com/schemas/extension/1.0">
+<extension id="xmlimporter" status="released" xmlns="http://getsymphony.com/schemas/extension/1.0">
 	<name>XML Importer</name>
 	<description>From XML to entries in an instant</description>
 	<repo type="github">https://github.com/symphonists/xmlimporter</repo>
@@ -22,6 +22,10 @@
 		</author>
 	</authors>
 	<releases>
+		<release version="2.1.2" date="2013-10-25" min="2.3.1">
+			- Set modification date when creating new entries
+			- Added PostRun, PostRunError and XMLImporterEntryPostSkip delegates
+		</release>
 		<release version="2.1.1" date="2013-09-04" min="2.3.1">
 			- Update modification date on import
 			- Fix string handling
